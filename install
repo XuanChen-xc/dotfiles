@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+set -e
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Installing dotfiles from: $DOTFILES_DIR"
+
+backup_and_link() {
+    local source="$1"
+    local target="$2"
+
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        if [ "$(readlink "$target" 2>/dev/null || true)" = "$source" ]; then
+            echo "Already linked: $target"
+            return
+        fi
+
+        backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
+        echo "Backing up $target -> $backup"
+        mv "$target" "$backup"
+    fi
+
+    echo "Linking $target -> $source"
+    ln -s "$source" "$target"
+}
+
+backup_and_link "$DOTFILES_DIR/bashrc" "$HOME/.bashrc"
+backup_and_link "$DOTFILES_DIR/tmux.conf" "$HOME/.tmux.conf"
+
+# Install tmux plugin manager if Git is available and TPM is not already installed.
+TPM_DIR="$HOME/.tmux/plugins/tpm"
+
+if [ ! -d "$TPM_DIR" ]; then
+    if command -v git >/dev/null 2>&1; then
+        echo "Installing tmux plugin manager (TPM)..."
+        git clone https://github.com/tmux-plugins/tpm "$TPM_DIR"
+    else
+        echo "Git not found; skipping TPM installation."
+    fi
+else
+    echo "TPM already installed."
+fi
+
+echo
+echo "Done."
+echo "Reload Bash with:"
+echo "  source ~/.bashrc"
+echo
+echo "For tmux plugins, start tmux and press:"
+echo "  Ctrl-b then Shift-I"
